@@ -10,7 +10,10 @@
   "synchronize": true,
   "migrationsRun": true,
   "logging": true,
-  "migrations": ["dist/src/**/db/migrations/*{.ts,.js}"],
+  "migrations": [
+    "dist/src/**/db/migrations/*{.ts,.js}",
+    "dist/modules/**/db/migrations/*{.ts,.js}"
+  ],
   "cli": {
     "migrationsDir": "db/migrations"
   }
