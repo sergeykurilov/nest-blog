@@ -11,7 +11,6 @@
   "migrationsRun": true,
   "logging": true,
   "migrations": [
-    "dist/src/**/db/migrations/*{.ts,.js}",
     "dist/modules/**/db/migrations/*{.ts,.js}"
   ],
   "cli": {
