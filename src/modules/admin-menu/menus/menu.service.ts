@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { MenuNode } from '../responses/menu-node';
+import { MenuNode, ROOT_MENU_NODE_ID } from '../responses/menu-node';
 import { PatchMenuNode } from '../responses/nested-tree-node';
 
 @Injectable()
 export class MenuService {
-  constructor() {}
+  private nodes: { [key: string]: MenuNode } = {};
+  private patches: PatchMenuNode[] = [];
 
   /**
    * Получит древовидную структуру меню
@@ -13,7 +14,46 @@ export class MenuService {
    * Листовые узлы обязаны иметь ссылку или будут удалены
    */
   getMenu(): MenuNode[] {
-    return [];
+    const nodeMap: { [id: string]: MenuNode } = {};
+    let src = Object.values(this.nodes).map((node) => {
+      const copy = { ...node };
+      nodeMap[copy.id] = copy;
+      return copy;
+    });
+
+    this.patches.forEach((patch) => {
+      if (nodeMap[patch.id]) {
+        Object.assign(nodeMap[patch.id], patch);
+      }
+    });
+
+    src = src.filter((node) => !node.removed);
+
+    return this.getMenuForNode(ROOT_MENU_NODE_ID, src);
+  }
+
+  private getMenuForNode(id: string, src: MenuNode[]): MenuNode[] {
+    return src
+      .filter((node) => node.parentId === id)
+      .map(({ href, ...node }) => {
+        const children = this.getMenuForNode(node.id, src);
+
+        if (children.length > 0) {
+          return {
+            ...node,
+            children,
+          };
+        }
+
+        return {
+          ...node,
+          href,
+          removed: !href,
+          children: [],
+        };
+      })
+      .filter((node) => !node.removed)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
   /**
@@ -23,7 +63,20 @@ export class MenuService {
    *   они имеют свой признак parentId
    */
   add(...nodes: MenuNode[]): void {
-    // TODO add nodes
+    nodes.forEach((node) => {
+      const sanitizedChildren =
+        node.children?.map((child) => ({
+          ...child,
+          parentId: node.id,
+        })) || [];
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { children, ...sanitizedNode } = node;
+
+      this.add(...sanitizedChildren);
+
+      this.nodes[node.id] = sanitizedNode;
+    });
   }
 
   /**
@@ -31,8 +84,8 @@ export class MenuService {
    *
    * Древовидная модификация не поддерживается
    */
-  patch(...nodes: PatchMenuNode[]): void {
-    // TODO patch nodes
+  patch(...patches: PatchMenuNode[]): void {
+    this.patches = [...this.patches, ...patches];
   }
 
   /**
@@ -41,6 +94,6 @@ export class MenuService {
    * При потере ссылки на корень все дети также не попадут в результат
    */
   remove(...ids: string[]): void {
-    // TODO remove
+    this.patch(...ids.map((id) => ({ id, removed: true })));
   }
 }

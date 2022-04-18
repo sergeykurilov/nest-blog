@@ -8,4 +8,5 @@ export interface MenuNode {
   id: string;
   parentId: string;
   sortOrder: number;
+  removed?: boolean;
 }
